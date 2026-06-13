@@ -729,4 +729,19 @@ function copyLink(){
 }
 function restoreFromHash(){
   const m=(location.hash||'').match(/s=([^&]+)/); if(!m) return false;
-  try{ const o=J
+  try{ const o=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    const map={c1:'c1',c2:'c2',yf:'yfrom',yt:'yto',lg:'lang',ty:'type',co:'score-core',cx:'score-ctx',no:'score-noise'};
+    for(const k in map){ if(o[k]!=null && $(map[k])) $(map[k]).value=o[k]; }
+    return true;
+  }catch(e){ return false; }
+}
+
+/* keep your setup between refreshes */
+['c1','c2','score-core','score-ctx','score-noise','yfrom','yto','maxrec','mail'].forEach(k=>{
+  try{ const v=localStorage.getItem('srtriage_'+k); if(v!=null)$(k).value=v; $(k).addEventListener('input',()=>{try{localStorage.setItem('srtriage_'+k,$(k).value)}catch(e){}}); }catch(e){}
+});
+// a shared link (#s=...) overrides saved settings so the recipient gets your exact search
+if(restoreFromHash()) log('Search setup loaded from shared link.');
+</script>
+</body>
+</html>
