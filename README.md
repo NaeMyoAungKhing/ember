@@ -2,7 +2,7 @@
 
 A free, browser-based tool for the **search and screening** stages of a systematic review. Search millions of papers, rank them by your own relevance criteria, screen with one click, validate your search, and export straight to ASReview — **no install, no account, no cost.** It runs entirely in your browser.
 
-> **Live demo:** _add your GitHub Pages link here, e.g._ `https://naemyoaungkhing.github.io/ember/`
+> **▶ Live demo: https://naemyoaungkhing.github.io/ember/**
 
 Ember uses the open **[OpenAlex](https://openalex.org)** scholarly database (CC0) as its search engine. It's the *review workflow* on top of that data — the part a plain search engine doesn't give you.
 

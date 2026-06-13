@@ -163,20 +163,11 @@
     <div class="grid2">
       <div>
         <label>Concept 1 — the main idea</label>
-        <textarea id="c1" placeholder='e.g. "machine learning"'>neuroleadership
-"organizational neuroscience"
-"leadership neuroscience"
-"brain-based leadership"
-"SCARF model"</textarea>
+        <textarea id="c1" placeholder='one term per line — e.g.&#10;"machine learning"&#10;"deep learning"&#10;(quotes = exact phrase)'></textarea>
       </div>
       <div>
         <label>Concept 2 — the context (optional)</label>
-        <textarea id="c2" placeholder="e.g. education">education
-school
-university
-teaching
-student
-learning</textarea>
+        <textarea id="c2" placeholder="optional second concept — e.g.&#10;education&#10;school&#10;classroom"></textarea>
       </div>
     </div>
     <div class="filters">
@@ -188,6 +179,7 @@ learning</textarea>
     <div class="btnrow">
       <button class="primary" onclick="run()">🔥 Fetch &amp; rank</button>
       <button class="sm" onclick="preview()">Preview count</button>
+      <button class="sm" onclick="loadExample()">Load example</button>
       <span id="log"></span>
     </div>
     <details class="adv">
@@ -220,25 +212,9 @@ learning</textarea>
     <details class="adv scorepanel" open>
       <summary>⚖️ Relevance scoring — tune these words, then Re-rank or Auto-suggest</summary>
       <div class="grid3">
-        <div><label>Core terms (+5) — your topic</label><textarea id="score-core">neuroleadership
-brain-based leadership
-organizational neuroscience
-leadership neuroscience
-neuroscience of leadership
-SCARF</textarea></div>
-        <div><label>Context in title (+2)</label><textarea id="score-ctx">leader
-leadership
-manager
-management
-coaching</textarea></div>
-        <div><label>Noise terms (−3) — off-topic</label><textarea id="score-noise">patient
-stroke
-surgery
-tumor
-disease
-rehabilitation
-cancer
-pediatric</textarea></div>
+        <div><label>Core terms (+5) — your topic</label><textarea id="score-core" placeholder="auto-filled from your search — or list your must-have terms"></textarea></div>
+        <div><label>Context in title (+2)</label><textarea id="score-ctx" placeholder="optional — words that make a match more likely (in the title)"></textarea></div>
+        <div><label>Noise terms (−3) — off-topic</label><textarea id="score-noise" placeholder="optional — words that usually mean off-topic"></textarea></div>
       </div>
       <div class="btnrow" style="margin-top:10px">
         <button class="sm primary" onclick="rescore();render();stats()">↻ Re-rank</button>
@@ -587,6 +563,15 @@ function markFocus(){ const trs=$('rows').querySelectorAll('tr'); trs.forEach((t
 function scrollFocus(){ const tr=$('rows').querySelector('tr.focus'); if(tr) tr.scrollIntoView({block:'nearest'}); }
 function setDec(i,d){ DATA[i].decision = DATA[i].decision===d?'':d; render(); stats(); }
 function decideCursor(d){ if(!VIEW.length) return; const idx=VIEW[cursor]; if(idx==null) return; DATA[idx].decision = (DATA[idx].decision===d?'':d); cursor=Math.min(VIEW.length-1,cursor+1); render(); stats(); scrollFocus(); }
+function loadExample(){
+  $('c1').value='neuroleadership\n"organizational neuroscience"\n"leadership neuroscience"\n"brain-based leadership"\n"SCARF model"';
+  $('c2').value='education\nschool\nuniversity\nteaching\nstudent\nlearning';
+  $('score-core').value='neuroleadership\nbrain-based leadership\norganizational neuroscience\nleadership neuroscience\nneuroscience of leadership\nSCARF';
+  $('score-ctx').value='leader\nleadership\nmanager\nmanagement\ncoaching';
+  $('score-noise').value='patient\nstroke\nsurgery\ntumor\ndisease\nrehabilitation\ncancer\npediatric';
+  ['c1','c2','score-core','score-ctx','score-noise'].forEach(k=>{try{localStorage.setItem('srtriage_'+k,$(k).value)}catch(e){}});
+  log('Loaded the neuroleadership-in-education example — click “Fetch & rank”.');
+}
 function seedFromSearch(){
   const c1=lines('c1').map(t=>t.replace(/^"|"$/g,'').trim()).filter(Boolean);
   if(!c1.length){ alert('Add some Concept 1 search terms in Step 1 first.'); return; }
@@ -744,19 +729,4 @@ function copyLink(){
 }
 function restoreFromHash(){
   const m=(location.hash||'').match(/s=([^&]+)/); if(!m) return false;
-  try{ const o=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
-    const map={c1:'c1',c2:'c2',yf:'yfrom',yt:'yto',lg:'lang',ty:'type',co:'score-core',cx:'score-ctx',no:'score-noise'};
-    for(const k in map){ if(o[k]!=null && $(map[k])) $(map[k]).value=o[k]; }
-    return true;
-  }catch(e){ return false; }
-}
-
-/* keep your setup between refreshes */
-['c1','c2','score-core','score-ctx','score-noise','yfrom','yto','maxrec','mail'].forEach(k=>{
-  try{ const v=localStorage.getItem('srtriage_'+k); if(v!=null)$(k).value=v; $(k).addEventListener('input',()=>{try{localStorage.setItem('srtriage_'+k,$(k).value)}catch(e){}}); }catch(e){}
-});
-// a shared link (#s=...) overrides saved settings so the recipient gets your exact search
-if(restoreFromHash()) log('Search setup loaded from shared link.');
-</script>
-</body>
-</html>
+  try{ const o=J
