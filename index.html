@@ -28,6 +28,22 @@
   header h1 b{color:var(--ember);font-weight:800}
   header h1 .tag-sub{font-size:14px;font-weight:500;color:var(--muted);letter-spacing:.3px;margin-left:6px}
   header p{margin:3px 0 0;color:var(--muted);font-size:13px}
+  .howto{margin-left:auto;align-self:center;background:var(--panel-2);border:1px solid var(--ember);color:var(--ember-2);border-radius:10px;padding:9px 15px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+  .howto:hover{background:rgba(255,122,24,.14)}
+  /* How-to-use overlay */
+  .guide-overlay{display:none;position:fixed;inset:0;background:rgba(8,10,14,.82);z-index:1000;align-items:center;justify-content:center;padding:24px}
+  .guide-modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:1040px;width:100%;max-height:94vh;display:flex;flex-direction:column;padding:16px 16px 12px;position:relative}
+  .guide-head{display:flex;align-items:center;gap:10px;margin:0 36px 10px 2px}
+  .guide-head b{color:var(--ember);font-size:16px}
+  .guide-x{position:absolute;top:12px;right:14px;background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:15px;line-height:1}
+  .guide-imgwrap{flex:1;overflow:auto;border:1px solid var(--line);border-radius:10px;background:#0c0f14;display:flex;align-items:flex-start;justify-content:center}
+  .guide-imgwrap img{max-width:100%;display:block}
+  .guide-cap{color:var(--muted);font-size:13px;margin:12px 6px 6px;text-align:center;line-height:1.5}
+  .guide-cap b{color:var(--ember-2)}
+  .guide-nav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:4px}
+  .guide-nav button{background:var(--panel-2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:8px 16px;font-weight:600;cursor:pointer;font-size:13px}
+  .guide-nav button:disabled{opacity:.4;cursor:not-allowed}
+  .guide-nav .gnum{color:var(--muted);font-size:13px;min-width:54px;text-align:center}
 
   /* steps */
   .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin:16px 0}
@@ -154,7 +170,23 @@
       <h1><b>Ember</b> <span class="tag-sub">Systematic Review Triage</span></h1>
       <p>Search millions of papers, rank by relevance, screen, and hand off to ASReview.</p>
     </div>
+    <button class="howto" onclick="openGuide()">📘 How to use</button>
   </header>
+
+  <!-- How-to-use overlay -->
+  <div id="guide" class="guide-overlay" onclick="if(event.target===this)closeGuide()">
+    <div class="guide-modal">
+      <button class="guide-x" onclick="closeGuide()" title="Close (Esc)">✕</button>
+      <div class="guide-head">📘 <b>How to use Ember</b> <span style="color:var(--muted);font-size:13px">— 5 quick steps (← → to flip · Esc to close)</span></div>
+      <div class="guide-imgwrap"><img id="guideImg" src="" alt="Ember guide step"></div>
+      <div class="guide-cap" id="guideCap"></div>
+      <div class="guide-nav">
+        <button id="guidePrev" onclick="guideStep(-1)">◀ Prev</button>
+        <span class="gnum" id="guideNum">1 / 5</span>
+        <button id="guideNext" onclick="guideStep(1)">Next ▶</button>
+      </div>
+    </div>
+  </div>
 
   <!-- STEP 1 -->
   <div class="card">
@@ -586,8 +618,29 @@ function autoTriage(){
 document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
   const k=th.dataset.k; if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir = k==='title'?1:-1;} render();
 });
+/* ---------- How-to-use overlay (5 annotated guide pages) ---------- */
+const GUIDE=[
+  {img:'ember-step1.png',cap:'<b>Step 1 — Build your search.</b> Type keyword groups (one term per line = OR; the two boxes are joined with AND), set Year / Language / Type, then click Fetch & rank.'},
+  {img:'ember-step2.png',cap:'<b>Step 2 — Screen the results.</b> Papers are ranked by score with your terms highlighted. Decide ✓ / ? / ✗ (or keys i / m / x). Use Auto-suggest, then Re-rank.'},
+  {img:'ember-step3.png',cap:'<b>Step 3 — Validate your search.</b> Paste DOIs you KNOW should be found and Check coverage — it tells you whether your search is sensitive enough.'},
+  {img:'ember-step4.png',cap:'<b>Step 4 — PRISMA flow.</b> Live identified → screened → included counts; click Copy PRISMA summary for your methods chapter.'},
+  {img:'ember-step5.png',cap:'<b>Step 5 — Hand off &amp; export.</b> Download RIS for ASReview, plus copy a citable search record and a shareable link that reopens your exact setup.'}
+];
+let gIdx=0;
+function showGuide(){ const g=GUIDE[gIdx]; $('guideImg').src=g.img; $('guideCap').innerHTML=g.cap; $('guideNum').textContent=(gIdx+1)+' / '+GUIDE.length; $('guidePrev').disabled=(gIdx===0); $('guideNext').disabled=(gIdx===GUIDE.length-1); }
+function openGuide(){ gIdx=0; showGuide(); $('guide').style.display='flex'; }
+function closeGuide(){ $('guide').style.display='none'; }
+function guideStep(d){ gIdx=Math.max(0,Math.min(GUIDE.length-1,gIdx+d)); showGuide(); }
+
 /* keyboard screening — i include · m maybe · x exclude · ↑/↓ move */
 document.addEventListener('keydown', e=>{
+  const g=$('guide');
+  if(g && g.style.display==='flex'){
+    if(e.key==='Escape'){ closeGuide(); e.preventDefault(); }
+    else if(e.key==='ArrowRight'){ guideStep(1); e.preventDefault(); }
+    else if(e.key==='ArrowLeft'){ guideStep(-1); e.preventDefault(); }
+    return;
+  }
   const tag=(document.activeElement&&document.activeElement.tagName)||'';
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if(!VIEW.length) return;
