@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ember — Systematic Review Triage</title>
+<meta name="description" content="Ember — a free, browser-based tool for systematic reviews. Search OpenAlex, rank by relevance, screen with one click, validate your search, and export to ASReview. No install, no account.">
+<meta name="author" content="Nae (naemyoaungkhing)">
+<meta property="og:title" content="Ember — Systematic Review Triage">
+<meta property="og:description" content="Search, rank, screen, validate, and export for systematic reviews — free, private, in your browser.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='88'%3E%F0%9F%94%A5%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171b22; --panel-2:#1d222b; --ink:#e8ebf0; --muted:#9aa3b2; --line:#2a313c;
+    --ember:#ff7a18; --ember-2:#ffb454; --glow:rgba(255,122,24,.25);
+    --ok:#46d17f; --ok-bg:#16321f; --no:#ff6b6b; --no-bg:#33191b; --may:#ffce5a; --may-bg:#33290f;
+    --brand:#ff8a2b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(900px 500px at 80% -10%,rgba(255,122,24,.10),transparent),var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+  .wrap{max-width:1140px;margin:0 auto;padding:0 18px 90px}
+
+  /* header */
+  header{display:flex;align-items:center;gap:16px;padding:26px 4px 14px}
+  .flame{width:52px;height:52px;border-radius:14px;object-fit:cover;box-shadow:0 0 0 1px var(--line),0 8px 30px var(--glow);background:#000}
+  header h1{margin:0;font-size:24px;letter-spacing:.2px}
+  header h1 b{color:var(--ember);font-weight:800}
+  header h1 .tag-sub{font-size:14px;font-weight:500;color:var(--muted);letter-spacing:.3px;margin-left:6px}
+  header p{margin:3px 0 0;color:var(--muted);font-size:13px}
+
+  /* steps */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;margin:16px 0}
+  .card h2{margin:0;font-size:15px;display:flex;align-items:center;gap:10px}
+  .step{width:26px;height:26px;border-radius:50%;background:linear-gradient(150deg,var(--ember),var(--ember-2));color:#1a1205;display:grid;place-items:center;font-weight:800;font-size:13px}
+  .sub{color:var(--muted);font-size:13px;margin:6px 0 14px}
+
+  label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin:12px 0 5px}
+  textarea,input,select{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;background:var(--panel-2);color:var(--ink)}
+  textarea{min-height:72px;resize:vertical}
+  textarea:focus,input:focus,select:focus{outline:none;border-color:var(--ember);box-shadow:0 0 0 3px var(--glow)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px}
+  @media(max-width:680px){.grid2,.filters{grid-template-columns:1fr}}
+
+  button{cursor:pointer;border:0;border-radius:10px;padding:11px 18px;font:inherit;font-weight:700;background:var(--panel-2);color:var(--ink);border:1px solid var(--line)}
+  button.primary{background:linear-gradient(150deg,var(--ember),var(--ember-2));color:#1a1205;border:0}
+  button.sm{padding:8px 12px;font-size:13px;font-weight:600}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+  #log{font-size:13px;color:var(--ember-2);margin-left:4px}
+  .note{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45}
+
+  details.adv{margin-top:14px;border-top:1px dashed var(--line);padding-top:10px}
+  details.adv summary{cursor:pointer;color:var(--muted);font-size:13px;font-weight:600;list-style:none}
+  details.adv summary::before{content:"⚙  ";}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:12px}
+  @media(max-width:680px){.grid3{grid-template-columns:1fr}}
+  .scorepanel{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:8px 0 16px}
+  .scorepanel summary::before{content:""}
+  .scorepanel summary{color:var(--ink);font-weight:700}
+  .scorepanel textarea{min-height:84px;background:var(--panel)}
+
+  /* stats */
+  .stats{display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 14px}
+  .stat{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-width:96px}
+  .stat b{font-size:22px;display:block;line-height:1.1}
+  .stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .stat.inc b{color:var(--ok)} .stat.exc b{color:var(--no)} .stat.may b{color:var(--may)} .stat.oa b{color:var(--ember-2)}
+
+  /* table */
+  .toolbar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:12px 0}
+  .toolbar input[type=search]{max-width:260px}
+  .toolbar label{margin:0;text-transform:none;letter-spacing:0;font-weight:500;color:var(--ink);font-size:13px;display:flex;align-items:center;gap:6px}
+  .tablewrap{max-height:580px;overflow:auto;border:1px solid var(--line);border-radius:12px;-webkit-overflow-scrolling:touch}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:780px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{position:sticky;top:0;background:#11151b;cursor:pointer;user-select:none;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+  tr:hover td{background:rgba(255,122,24,.04)}
+  /* keep narrow columns from wrapping awkwardly across devices */
+  th:nth-child(1),td:nth-child(1),th:nth-child(2),td:nth-child(2),th:nth-child(5),td:nth-child(5),th:nth-child(6),td:nth-child(6){white-space:nowrap}
+  td:nth-child(1){width:48px} td:nth-child(2){width:54px}
+  .sc{font-weight:800;text-align:center;color:var(--ember-2)}
+  a{color:var(--ember-2);text-decoration:none} a:hover{text-decoration:underline}
+  .oa{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--ok-bg);color:var(--ok);white-space:nowrap;display:inline-block}
+  .oa.closed{background:#23262d;color:var(--muted)}
+  .abs{color:var(--muted);font-size:12px;max-width:520px}
+  details.ab summary{cursor:pointer;color:var(--muted);font-size:11px}
+  .dec{white-space:nowrap}
+  .dec button{padding:4px 9px;font-size:13px;margin:1px;background:#23262d;border:1px solid var(--line)}
+  .dec .on-inc{background:var(--ok-bg);color:var(--ok);border-color:var(--ok)}
+  .dec .on-exc{background:var(--no-bg);color:var(--no);border-color:var(--no)}
+  .dec .on-may{background:var(--may-bg);color:var(--may);border-color:var(--may)}
+  mark{background:rgba(255,122,24,.28);color:var(--ember-2);border-radius:3px;padding:0 1px}
+  tr.focus td{background:rgba(255,122,24,.10)!important;box-shadow:inset 3px 0 0 var(--ember)}
+  /* import / sources */
+  .import-row{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+  .import-row input[type=file]{font-size:13px;padding:8px;background:var(--panel-2)}
+  .sources{margin-top:8px;display:flex;flex-direction:column;gap:3px}
+  .src{font-size:12px;color:var(--muted)}
+  .src b{color:var(--ember-2)}
+  .keys{font-size:12px;color:var(--muted);margin-left:auto}
+  .keys kbd{margin:0 1px}
+
+  /* ASReview card highlight */
+  .asr{border:1px solid var(--ember);background:linear-gradient(180deg,rgba(255,122,24,.07),transparent)}
+  .asr .big{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .steps-mini{color:var(--muted);font-size:13px;margin-top:10px;padding-left:18px}
+  .steps-mini li{margin:3px 0}
+  /* visual hand-off flow */
+  .flow{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap;margin:8px 0 18px}
+  .flow-stage{flex:1;min-width:130px;background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;position:relative}
+  .flow-stage .ico{font-size:28px;line-height:1;display:block;margin-bottom:7px}
+  .flow-stage .ico video{width:32px;height:32px;border-radius:8px;object-fit:cover;vertical-align:middle}
+  .flow-stage b{display:block;font-size:13px;margin-bottom:2px}
+  .flow-stage small{color:var(--muted);font-size:11px;display:block;line-height:1.4}
+  .flow-stage .num{position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--bg);padding:0 7px;font-size:11px;color:var(--muted)}
+  .flow-stage.here{border-color:var(--ember);box-shadow:0 0 0 3px var(--glow)}
+  .flow-stage.asr-s{border-color:#4f7cff;box-shadow:0 0 0 3px rgba(79,124,255,.18)}
+  .flow-stage.asr-s .ico{filter:none}
+  .flow-arrow{display:flex;align-items:center;justify-content:center;color:var(--ember);font-size:20px;font-weight:800;min-width:22px}
+  .flow-arrow.handoff{flex-direction:column;color:#ffb454;font-size:14px}
+  .flow-arrow.handoff span{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  @media(max-width:720px){.flow{flex-direction:column}.flow-arrow{transform:rotate(90deg);min-height:18px}}
+  /* PRISMA flow (PRISMA-2020 style: main column + side exclusions) */
+  .prisma{max-width:660px;margin:10px auto 6px}
+  .pr-phase{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--ember-2);margin:14px 0 6px;padding-left:2px}
+  .pr-phase:first-child{margin-top:0}
+  .prl{display:flex;align-items:stretch}
+  .prl-main{flex:1.35;display:flex}
+  .prl-conn{flex:0 0 36px;display:flex;align-items:center;justify-content:center;color:var(--ember);font-weight:800;font-size:17px}
+  .prl-side{flex:.95;display:flex}
+  .pbox{flex:1;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px 15px;display:flex;flex-direction:column;justify-content:center}
+  .pbox .lbl{font-size:12.5px;color:var(--ink);font-weight:600}
+  .pbox .lbl small{display:block;color:var(--muted);font-size:11px;font-weight:400;margin-top:2px}
+  .pbox .num{font-size:25px;font-weight:800;color:var(--ember-2);line-height:1.05;margin-top:5px}
+  .pbox.side{border-style:dashed}
+  .pbox.side .num{font-size:19px;color:var(--no)}
+  .pbox.inc{border-color:var(--ok);background:linear-gradient(180deg,rgba(70,209,127,.09),transparent)}
+  .pbox.inc .num{color:var(--ok)}
+  .prl.vert{height:24px}
+  .prl.vert .prl-main{align-items:center;justify-content:center;color:var(--muted);font-size:18px}
+  .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:26px;line-height:1.7}
+  .foot b{color:var(--ember-2)}
+  kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <video class="flame" src="Flame.mp4" autoplay loop muted playsinline title="Ember"></video>
+    <div>
+      <h1><b>Ember</b> <span class="tag-sub">Systematic Review Triage</span></h1>
+      <p>Search millions of papers, rank by relevance, screen, and hand off to ASReview.</p>
+    </div>
+  </header>
+
+  <!-- STEP 1 -->
+  <div class="card">
+    <h2><span class="step">1</span> Build your search</h2>
+    <p class="sub">Type keywords grouped by idea — one per line (that's an <b>OR</b>). The two groups are joined with <b>AND</b>. Use quotes for phrases.</p>
+    <div class="grid2">
+      <div>
+        <label>Concept 1 — the main idea</label>
+        <textarea id="c1" placeholder='e.g. "machine learning"'>neuroleadership
+"organizational neuroscience"
+"leadership neuroscience"
+"brain-based leadership"
+"SCARF model"</textarea>
+      </div>
+      <div>
+        <label>Concept 2 — the context (optional)</label>
+        <textarea id="c2" placeholder="e.g. education">education
+school
+university
+teaching
+student
+learning</textarea>
+      </div>
+    </div>
+    <div class="filters">
+      <div><label>Year from</label><input id="yfrom" type="number" value="2000"></div>
+      <div><label>Year to</label><input id="yto" type="number" value="2026"></div>
+      <div><label>Language</label><select id="lang"><option value="en">English only</option><option value="">Any</option></select></div>
+      <div><label>Type</label><select id="type"><option value="article">Articles</option><option value="">Any</option></select></div>
+    </div>
+    <div class="btnrow">
+      <button class="primary" onclick="run()">🔥 Fetch &amp; rank</button>
+      <button class="sm" onclick="preview()">Preview count</button>
+      <span id="log"></span>
+    </div>
+    <details class="adv">
+      <summary>More options</summary>
+      <div class="filters" style="margin-top:12px">
+        <div><label>Max records</label><input id="maxrec" type="number" value="2000"></div>
+        <div style="grid-column:span 3"><label>Your email (optional — faster API)</label><input id="mail" placeholder="you@example.com"><div class="note">Sent only to OpenAlex (for its faster “polite pool”) and stored only in your browser — nowhere else.</div></div>
+      </div>
+    </details>
+    <div class="import-row">
+      <label style="margin-bottom:6px">Already searched Scopus / Web of Science / PubMed? Import &amp; merge those results (.ris or .csv)</label>
+      <input id="impf" type="file" accept=".ris,.txt,.csv,.tsv" multiple onchange="importFiles(this.files)">
+      <div id="sources" class="sources"></div>
+    </div>
+    <details class="adv">
+      <summary>✅ Validate your search — does it find papers you already know? (recommended)</summary>
+      <label style="margin-top:10px">Paste DOIs of known-relevant “gold” papers, one per line</label>
+      <textarea id="goldset" placeholder="10.1097/jnn.0000000000000779&#10;10.3390/app11135956"></textarea>
+      <div class="btnrow" style="margin-top:8px">
+        <button class="sm" onclick="validateSearch()">Check coverage</button>
+        <span class="note" style="margin:0;align-self:center">Tells you if your query is sensitive enough — and whether a missed paper is in OpenAlex at all.</span>
+      </div>
+      <div id="goldout" style="margin-top:10px"></div>
+    </details>
+  </div>
+
+  <!-- STEP 2 -->
+  <div class="card">
+    <h2><span class="step">2</span> Screen the results</h2>
+    <details class="adv scorepanel" open>
+      <summary>⚖️ Relevance scoring — tune these words, then Re-rank or Auto-suggest</summary>
+      <div class="grid3">
+        <div><label>Core terms (+5) — your topic</label><textarea id="score-core">neuroleadership
+brain-based leadership
+organizational neuroscience
+leadership neuroscience
+neuroscience of leadership
+SCARF</textarea></div>
+        <div><label>Context in title (+2)</label><textarea id="score-ctx">leader
+leadership
+manager
+management
+coaching</textarea></div>
+        <div><label>Noise terms (−3) — off-topic</label><textarea id="score-noise">patient
+stroke
+surgery
+tumor
+disease
+rehabilitation
+cancer
+pediatric</textarea></div>
+      </div>
+      <div class="btnrow" style="margin-top:10px">
+        <button class="sm primary" onclick="rescore();render();stats()">↻ Re-rank</button>
+        <button class="sm" onclick="seedFromSearch()">Fill core from my search terms</button>
+        <span class="note" style="margin:0;align-self:center">Core = +5 (title/abstract) · Context = +2 (title only) · Noise = −3. Empty Core means everything scores 0 — fill it before Auto-suggest.</span>
+      </div>
+    </details>
+    <div class="stats">
+      <div class="stat"><b id="s-total">0</b><span>found</span></div>
+      <div class="stat inc"><b id="s-inc">0</b><span>include</span></div>
+      <div class="stat may"><b id="s-may">0</b><span>maybe</span></div>
+      <div class="stat exc"><b id="s-exc">0</b><span>exclude</span></div>
+      <div class="stat oa"><b id="s-oa">0</b><span>open PDFs</span></div>
+    </div>
+    <div class="toolbar">
+      <button class="sm primary" onclick="autoTriage()">✨ Auto-suggest (score ≥ 3)</button>
+      <input type="search" id="filter" placeholder="Filter titles…" oninput="render()">
+      <label><input type="checkbox" id="onlyOA" onchange="render()"> open-access only</label>
+      <label><input type="checkbox" id="hideExc" onchange="render()"> hide excluded</label>
+      <span class="keys">keys: <kbd>↑</kbd><kbd>↓</kbd> move · <kbd>i</kbd> include · <kbd>m</kbd> maybe · <kbd>x</kbd> exclude</span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th data-k="score">Score</th><th data-k="year">Year</th><th data-k="title">Title</th>
+          <th>Authors</th><th>Access</th><th>Decision</th>
+        </tr></thead>
+        <tbody id="rows"><tr><td colspan="6" class="sub" style="padding:20px">Run a search in Step 1 to see results.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PRISMA -->
+  <div class="card">
+    <h2>📊 PRISMA flow <span class="oa closed" style="margin-left:6px">live counts</span></h2>
+    <p class="sub">These update as you screen — copy them straight into your PRISMA diagram.</p>
+    <div id="prisma" class="prisma"><p class="sub" style="margin:0">Run a search to populate.</p></div>
+    <button class="sm" onclick="exportPrisma()">📋 Copy PRISMA summary</button>
+  </div>
+
+  <!-- STEP 3: ASReview -->
+  <div class="card asr">
+    <h2><span class="step">3</span> Hand off to ASReview <span class="oa" style="margin-left:6px">the key step</span></h2>
+    <p class="sub">ASReview does AI-assisted screening (active learning). Here's how your search flows into it:</p>
+
+    <div class="flow">
+      <div class="flow-stage here"><span class="num">in this tool</span><span class="ico"><video src="Flame.mp4" autoplay loop muted playsinline></video></span><b>Search &amp; rank</b><small>find + relevance-rank papers</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-stage here"><span class="num">one click ↓</span><span class="ico">📄</span><b>Export .ris</b><small>standard file ASReview reads</small></div>
+      <div class="flow-arrow handoff">→<span>hand&nbsp;off</span></div>
+      <div class="flow-stage asr-s"><span class="num">in ASReview</span><span class="ico">📥</span><b>Import file</b><small>Create → File → drop the .ris</small></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-stage asr-s"><span class="num">in ASReview</span><span class="ico">🤖</span><b>AI screening</b><small>you label, the AI re-ranks the rest</small></div>
+    </div>
+
+    <div class="big">
+      <button class="primary" onclick="exportRIS('all')">📤 Download RIS for ASReview</button>
+      <button class="sm" onclick="exportRIS('keep')">RIS — included + maybe only</button>
+      <button class="sm" onclick="exportCSV('asreview')">ASReview-ready CSV</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: other exports -->
+  <div class="card">
+    <h2><span class="step">4</span> Export &amp; save</h2>
+    <div class="btnrow" style="margin-top:0">
+      <button class="sm" onclick="exportCSV('all')">Worksheet CSV (all)</button>
+      <button class="sm" onclick="exportCSV('inc')">Included CSV</button>
+      <button class="sm" onclick="downloadHub()">Open-access download hub</button>
+      <button class="sm" onclick="saveSession()">Save session</button>
+      <button class="sm" onclick="document.getElementById('loadf').click()">Load session</button>
+      <input id="loadf" type="file" accept="application/json" style="display:none" onchange="loadSession(this.files[0])">
+    </div>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="sm" onclick="copyRecord()">📋 Copy search record + methods paragraph</button>
+      <button class="sm" onclick="copyLink()">🔗 Copy shareable search link</button>
+      <span class="note" style="margin:0;align-self:center">Reproducibility: a citable record of exactly what you searched, and a link that reopens this exact setup.</span>
+    </div>
+  </div>
+
+  <p class="foot">
+    <b>Ember</b> · Systematic Review Triage · free &amp; open · data from <a href="https://openalex.org" target="_blank">OpenAlex</a> (CC0) · runs entirely in your browser<br>
+    Created by Nae while running his own systematic review — shared so others can do theirs faster.
+  </p>
+</div>
+
+<script>
+let DATA = [];
+let RAW = 0;            // total records ingested across all sources, before de-dup (for PRISMA)
+let SOURCES = [];       // human-readable log of where records came from
+let VIEW = [];          // DATA indices in current display order (for keyboard nav)
+let cursor = 0;         // focused row position within VIEW
+let HLRE = null;        // regex for keyword highlighting
+let sortKey = 'score', sortDir = -1;
+const $ = id => document.getElementById(id);
+const recKey = r => (r.doi||'').toLowerCase() + '|' + (r.title||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().slice(0,80);
+const lines = el => $(el).value.split('\n').map(s=>s.trim()).filter(Boolean);
+const log = m => { $('log').textContent = m; };
+
+function buildFilter(){
+  const c1 = lines('c1'), c2 = lines('c2');
+  let q = '(' + c1.join(' OR ') + ')';
+  if (c2.length) q += ' AND (' + c2.join(' OR ') + ')';
+  let f = 'title_and_abstract.search:' + q;
+  if ($('type').value) f += ',type:' + $('type').value;
+  if ($('lang').value) f += ',language:' + $('lang').value;
+  const yf = $('yfrom').value, yt = $('yto').value;
+  if (yf && yt) f += ',publication_year:' + yf + '-' + yt;
+  return f;
+}
+function apiUrl(extra){
+  const mail = ($('mail').value||'').trim();
+  return 'https://api.openalex.org/works?filter=' + encodeURIComponent(buildFilter()) + extra + (mail?('&mailto='+encodeURIComponent(mail)):'');
+}
+async function preview(){
+  try{ log('Checking…');
+    const r = await fetch(apiUrl('&per-page=1&select=id')).then(x=>x.json());
+    log('≈ ' + (r.meta?r.meta.count.toLocaleString():'?') + ' records match.');
+  }catch(e){ log('Error: ' + e.message); }
+}
+function deinvert(inv){ if(!inv) return ''; const p=[]; for(const [w,ii] of Object.entries(inv)) for(const i of ii) p[i]=w; return p.join(' '); }
+
+async function run(){
+  const max = parseInt($('maxrec').value)||2000;
+  const sel = 'id,doi,title,publication_year,authorships,abstract_inverted_index,best_oa_location,open_access,primary_location';
+  let cursor='*', recs=[];
+  try{
+    while(cursor && recs.length<max){
+      log('Fetching… ' + recs.length);
+      const r = await fetch(apiUrl('&per-page=200&select='+sel+'&cursor='+encodeURIComponent(cursor))).then(x=>x.json());
+      if(!r.results) break;
+      recs.push(...r.results); cursor=r.meta.next_cursor;
+    }
+  }catch(e){ log('Error: ' + e.message); return; }
+  RAW = recs.length; SOURCES = [];
+  const seen=new Set(); DATA=[];
+  for(const w of recs){
+    const rec={
+      title:(w.title||'').replace(/<[^>]*>/g,''),
+      abstract:deinvert(w.abstract_inverted_index),
+      authorList:(w.authorships||[]).map(a=>a.author&&a.author.display_name).filter(Boolean),
+      journal:w.primary_location&&w.primary_location.source?w.primary_location.source.display_name:'',
+      year:w.publication_year, doi:(w.doi||'').replace('https://doi.org/',''),
+      url:w.doi||(w.primary_location&&w.primary_location.landing_page_url)||'',
+      pdf:w.best_oa_location&&w.best_oa_location.pdf_url?w.best_oa_location.pdf_url:'',
+      oa:w.open_access?w.open_access.oa_status:'closed',
+      source:'OpenAlex', decision:'', score:0
+    };
+    const k=recKey(rec); if(!rec.title||seen.has(k)) continue; seen.add(k);
+    DATA.push(rec);
+  }
+  SOURCES.push('OpenAlex: <b>'+DATA.length+'</b> unique (from '+recs.length+' fetched)');
+  // auto-seed Core scoring terms from the search if the user left them empty (so scoring is never all-zero)
+  if(!lines('score-core').length){ const c1=lines('c1').map(t=>t.replace(/^"|"$/g,'').trim()).filter(Boolean); if(c1.length){ $('score-core').value=c1.join('\n'); try{localStorage.setItem('srtriage_score-core',$('score-core').value)}catch(e){} } }
+  rescore();
+  log('Done — ' + DATA.length + ' unique (from ' + recs.length + ').');
+  cursor=0; render(); stats(); renderSources();
+}
+
+/* ---------- multi-database import & merge ---------- */
+function importFiles(files){
+  [...files].forEach(f=>{
+    const fr=new FileReader();
+    fr.onload=()=>{
+      const text=fr.result;
+      const isRIS = /\.ris$/i.test(f.name) || /^\s*TY\s\s-\s/m.test(text.slice(0,400));
+      const recs = isRIS ? parseRIS(text) : parseCSV(text);
+      ingest(recs, f.name);
+    };
+    fr.readAsText(f);
+  });
+  $('impf').value='';
+}
+function ingest(records, sourceName){
+  if(!records || !records.length){ alert('No records found in '+sourceName+'. Make sure it is a RIS or CSV export.'); return; }
+  RAW += records.length;
+  const keyset=new Set(DATA.map(recKey));
+  let added=0, dup=0;
+  for(const r of records){
+    r.title=(r.title||'').trim(); if(!r.title){ continue; }
+    const k=recKey(r);
+    if(keyset.has(k)){ dup++; continue; }
+    keyset.add(k);
+    r.authorList=r.authorList||[]; r.abstract=r.abstract||''; r.journal=r.journal||'';
+    r.year=r.year||''; r.doi=(r.doi||'').replace(/^https?:\/\/doi\.org\//i,''); r.url=r.url||(r.doi?'https://doi.org/'+r.doi:'');
+    r.pdf=r.pdf||''; r.oa=r.oa||'closed'; r.source=sourceName; r.decision=''; r.score=0;
+    DATA.push(r); added++;
+  }
+  SOURCES.push(sourceName+': <b>+'+added+'</b> new, '+dup+' duplicate'+(dup===1?'':'s')+' removed');
+  rescore(); cursor=0; render(); stats(); renderSources();
+  log('Imported '+sourceName+' — '+added+' new, '+dup+' duplicates.');
+}
+function renderSources(){
+  const el=$('sources'); if(!el) return;
+  el.innerHTML = SOURCES.map(s=>'<div class="src">• '+s+'</div>').join('')
+    + (SOURCES.length>1 ? '<div class="src" style="margin-top:4px">= <b>'+DATA.length+'</b> unique records across '+SOURCES.length+' sources</div>' : '');
+}
+function parseRIS(text){
+  const recs=[]; let cur=null;
+  text.split(/\r?\n/).forEach(line=>{
+    const m=line.match(/^([A-Z][A-Z0-9])\s\s-\s?(.*)$/);
+    if(m){
+      const tag=m[1], val=(m[2]||'').trim();
+      if(tag==='TY'){ cur={title:'',abstract:'',authorList:[],year:'',doi:'',journal:'',url:''}; return; }
+      if(!cur) return;
+      if(tag==='TI'||tag==='T1') cur.title=(cur.title?cur.title+' ':'')+val;
+      else if(tag==='AB'||tag==='N2') cur.abstract=(cur.abstract?cur.abstract+' ':'')+val;
+      else if(tag==='AU'||tag==='A1'){ if(val) cur.authorList.push(val); }
+      else if(tag==='PY'||tag==='Y1') cur.year=(val.match(/\d{4}/)||[''])[0];
+      else if(tag==='DO') cur.doi=val;
+      else if(tag==='JO'||tag==='JF'||tag==='T2') cur.journal=cur.journal||val;
+      else if(tag==='UR'||tag==='L1'){ if(!cur.url) cur.url=val; }
+      else if(tag==='ER'){ recs.push(cur); cur=null; }
+    }
+  });
+  if(cur) recs.push(cur);
+  return recs;
+}
+function csvRows(text, delim){
+  const rows=[]; let row=[], field='', q=false;
+  for(let i=0;i<text.length;i++){ const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){field+='"';i++;} else q=false; } else field+=ch; }
+    else { if(ch==='"') q=true; else if(ch===delim){row.push(field);field='';} else if(ch==='\n'){row.push(field);rows.push(row);row=[];field='';} else if(ch!=='\r') field+=ch; }
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+function parseCSV(text){
+  const firstLine=text.split(/\r?\n/)[0]||'';
+  const delim = (firstLine.split('\t').length > firstLine.split(',').length) ? '\t' : ',';
+  const rows=csvRows(text, delim); if(rows.length<2) return [];
+  const head=rows[0].map(h=>h.toLowerCase().trim());
+  const find=(...names)=>{ for(const n of names){ let i=head.indexOf(n); if(i>=0)return i; } for(const n of names){ const i=head.findIndex(h=>h.includes(n)); if(i>=0)return i; } return -1; };
+  const iT=find('title','article title','ti'), iA=find('abstract','ab'), iAu=find('authors','author','au'),
+        iD=find('doi'), iY=find('year','publication year','py'), iU=find('url','link','doi link');
+  const out=[];
+  for(let r=1;r<rows.length;r++){ const c=rows[r]; if(!c.length) continue; const title=(iT>=0?c[iT]:'')||''; if(!title.trim()) continue;
+    out.push({
+      title:title,
+      abstract:iA>=0?(c[iA]||''):'',
+      authorList:iAu>=0?(c[iAu]||'').split(/;|\sand\s|\|/).map(s=>s.trim()).filter(Boolean):[],
+      year:iY>=0?(((c[iY]||'').match(/\d{4}/)||[''])[0]):'',
+      doi:iD>=0?(c[iD]||''):'', journal:'', url:iU>=0?(c[iU]||''):''
+    });
+  }
+  return out;
+}
+
+function rescore(){
+  const core=lines('score-core').map(s=>s.toLowerCase());
+  const ctx=lines('score-ctx').map(s=>s.toLowerCase());
+  const noise=lines('score-noise').map(s=>s.toLowerCase());
+  // build highlight regex from core + context terms
+  const terms=[...new Set([...lines('score-core'),...lines('score-ctx')])]
+    .map(t=>t.replace(/^"|"$/g,'').trim()).filter(t=>t.length>2)
+    .map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).sort((a,b)=>b.length-a.length);
+  HLRE = terms.length ? new RegExp('('+terms.join('|')+')','gi') : null;
+  for(const r of DATA){
+    const t=(r.title||'').toLowerCase(), txt=t+' '+(r.abstract||'').toLowerCase();
+    let s=0;
+    if(core.some(k=>txt.includes(k))) s+=5;
+    if(ctx.some(k=>t.includes(k))) s+=2;
+    if(noise.some(k=>txt.includes(k)) && !core.some(k=>txt.includes(k))) s-=3;
+    r.score=s;
+  }
+}
+function stats(){
+  $('s-total').textContent=DATA.length;
+  $('s-inc').textContent=DATA.filter(r=>r.decision==='inc').length;
+  $('s-exc').textContent=DATA.filter(r=>r.decision==='exc').length;
+  $('s-may').textContent=DATA.filter(r=>r.decision==='may').length;
+  $('s-oa').textContent=DATA.filter(r=>r.pdf).length;
+  renderPrisma();
+}
+function prismaNumbers(){
+  const dup = Math.max(0, RAW - DATA.length);
+  const screened = DATA.length;
+  const inc = DATA.filter(r=>r.decision==='inc').length;
+  const may = DATA.filter(r=>r.decision==='may').length;
+  const exc = DATA.filter(r=>r.decision==='exc').length;
+  const undec = screened - inc - may - exc;
+  return {identified:RAW, dup, screened, inc, may, exc, undec};
+}
+function renderPrisma(){
+  const el=$('prisma'); if(!el) return;
+  if(!DATA.length){ el.innerHTML='<p class="sub" style="margin:0">Run a search to populate.</p>'; return; }
+  const p=prismaNumbers();
+  const box=(cls,lbl,sub,num)=>'<div class="pbox '+cls+'"><div class="lbl">'+lbl+(sub?'<small>'+sub+'</small>':'')+'</div><div class="num">'+num+'</div></div>';
+  const row=(mainB,sideB)=>'<div class="prl"><div class="prl-main">'+mainB+'</div><div class="prl-conn">'+(sideB?'→':'')+'</div><div class="prl-side">'+(sideB||'')+'</div></div>';
+  const vert='<div class="prl vert"><div class="prl-main">↓</div><div class="prl-conn"></div><div class="prl-side"></div></div>';
+  const incSub=[]; if(p.may)incSub.push(p.may+' “maybe”'); if(p.undec)incSub.push(p.undec+' undecided');
+  el.innerHTML =
+    '<div class="pr-phase">Identification</div>'
+    + row(box('', 'Records identified', 'OpenAlex'+(SOURCES.length>1?' + imported databases':''), p.identified), box('side','Duplicates removed','',p.dup))
+    + vert
+    + '<div class="pr-phase">Screening</div>'
+    + row(box('', 'Records screened', 'title &amp; abstract', p.screened), box('side','Records excluded','',p.exc))
+    + vert
+    + '<div class="pr-phase">Included</div>'
+    + row(box('inc', 'Studies included', incSub.length?incSub.join(' · '):'final set', p.inc), '');
+}
+function exportPrisma(){
+  if(!DATA.length){ alert('Run a search first.'); return; }
+  const p=prismaNumbers();
+  const txt =
+`PRISMA flow — ${stamp()}
+Records identified (OpenAlex search): ${p.identified}
+Duplicates removed: ${p.dup}
+Records screened (title & abstract): ${p.screened}
+Records excluded: ${p.exc}
+Records included: ${p.inc}  (plus ${p.may} "maybe", ${p.undec} undecided)`;
+  if(navigator.clipboard){ navigator.clipboard.writeText(txt).then(()=>log('PRISMA summary copied to clipboard.'),()=>download('prisma_'+stamp()+'.txt',txt)); }
+  else download('prisma_'+stamp()+'.txt', txt);
+}
+function hl(text){ const e=esc(text); return HLRE ? e.replace(HLRE, m=>'<mark>'+m+'</mark>') : e; }
+function render(){
+  let rows=DATA.slice();
+  const f=$('filter').value.toLowerCase();
+  if(f) rows=rows.filter(r=>r.title.toLowerCase().includes(f));
+  if($('onlyOA').checked) rows=rows.filter(r=>r.pdf);
+  if($('hideExc').checked) rows=rows.filter(r=>r.decision!=='exc');
+  rows.sort((a,b)=>{ let x=a[sortKey], y=b[sortKey]; if(typeof x==='string'){x=x.toLowerCase();y=(y||'').toLowerCase();} return (x>y?1:x<y?-1:0)*sortDir; });
+  VIEW = rows.map(r=>DATA.indexOf(r));
+  if(cursor>=VIEW.length) cursor=VIEW.length-1; if(cursor<0) cursor=0;
+  const tb=$('rows');
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="6" class="sub" style="padding:20px">No rows.</td></tr>'; VIEW=[]; return; }
+  tb.innerHTML = rows.map((r,vi)=>{
+    const i=DATA.indexOf(r);
+    const link = r.doi? 'https://doi.org/'+r.doi : (r.url||'');
+    const acc = r.pdf? '<a href="'+r.pdf+'" target="_blank" class="oa">'+r.oa+' ↓</a>' : '<span class="oa closed">'+r.oa+'</span>';
+    const src = (r.source && r.source!=='OpenAlex') ? ' <span class="oa closed" title="imported source">'+esc(r.source).slice(0,16)+'</span>' : '';
+    return '<tr class="'+(vi===cursor?'focus':'')+'" onclick="cursor='+vi+';markFocus()">'
+      + '<td class="sc">'+r.score+'</td><td>'+(r.year||'')+'</td>'
+      + '<td>'+(link?'<a href="'+link+'" target="_blank" onclick="event.stopPropagation()">':'')+hl(r.title)+(link?'</a>':'')+src
+        + '<details class="ab" onclick="event.stopPropagation()"><summary>abstract</summary><div class="abs">'+hl((r.abstract||'(none)').slice(0,650))+'</div></details></td>'
+      + '<td class="abs">'+esc((r.authorList||[]).slice(0,3).join('; '))+'</td>'
+      + '<td>'+acc+'</td>'
+      + '<td class="dec">'
+        + '<button class="'+(r.decision==='inc'?'on-inc':'')+'" onclick="event.stopPropagation();setDec('+i+',\'inc\')">✓</button>'
+        + '<button class="'+(r.decision==='may'?'on-may':'')+'" onclick="event.stopPropagation();setDec('+i+',\'may\')">?</button>'
+        + '<button class="'+(r.decision==='exc'?'on-exc':'')+'" onclick="event.stopPropagation();setDec('+i+',\'exc\')">✗</button>'
+      + '</td></tr>';
+  }).join('');
+}
+function markFocus(){ const trs=$('rows').querySelectorAll('tr'); trs.forEach((t,vi)=>t.classList.toggle('focus',vi===cursor)); }
+function scrollFocus(){ const tr=$('rows').querySelector('tr.focus'); if(tr) tr.scrollIntoView({block:'nearest'}); }
+function setDec(i,d){ DATA[i].decision = DATA[i].decision===d?'':d; render(); stats(); }
+function decideCursor(d){ if(!VIEW.length) return; const idx=VIEW[cursor]; if(idx==null) return; DATA[idx].decision = (DATA[idx].decision===d?'':d); cursor=Math.min(VIEW.length-1,cursor+1); render(); stats(); scrollFocus(); }
+function seedFromSearch(){
+  const c1=lines('c1').map(t=>t.replace(/^"|"$/g,'').trim()).filter(Boolean);
+  if(!c1.length){ alert('Add some Concept 1 search terms in Step 1 first.'); return; }
+  $('score-core').value=c1.join('\n');
+  try{localStorage.setItem('srtriage_score-core',$('score-core').value)}catch(e){}
+  rescore(); render(); stats(); log('Core scoring terms filled from your search.');
+}
+function autoTriage(){
+  if(!lines('score-core').length){ alert('Add some Core terms first (or click “Fill core from my search terms”) — otherwise every paper scores 0 and all get excluded.'); return; }
+  rescore(); for(const r of DATA){ if(!r.decision) r.decision = r.score>=3?'inc':'exc'; } render(); stats();
+}
+document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
+  const k=th.dataset.k; if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir = k==='title'?1:-1;} render();
+});
+/* keyboard screening — i include · m maybe · x exclude · ↑/↓ move */
+document.addEventListener('keydown', e=>{
+  const tag=(document.activeElement&&document.activeElement.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
+  if(!VIEW.length) return;
+  const k=e.key.toLowerCase();
+  if(k==='arrowdown'||k==='j'){ cursor=Math.min(VIEW.length-1,cursor+1); markFocus(); scrollFocus(); e.preventDefault(); }
+  else if(k==='arrowup'||k==='k'){ cursor=Math.max(0,cursor-1); markFocus(); scrollFocus(); e.preventDefault(); }
+  else if(k==='i'||k==='r'){ decideCursor('inc'); e.preventDefault(); }
+  else if(k==='m'){ decideCursor('may'); e.preventDefault(); }
+  else if(k==='x'||k==='e'){ decideCursor('exc'); e.preventDefault(); }
+});
+
+/* ---------- exports ---------- */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function csvEsc(s){ return '"'+String(s==null?'':s).replace(/"/g,'""').replace(/\r?\n/g,' ')+'"'; }
+function stamp(){ return new Date().toISOString().slice(0,10); }
+function download(name, text, mime){ const b=new Blob([text],{type:mime||'text/plain'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(u),1500); }
+
+/* RIS — native ASReview import format */
+function toRIS(rows){
+  const out=[];
+  for(const r of rows){
+    out.push('TY  - JOUR');
+    out.push('TI  - ' + (r.title||''));
+    (r.authorList||[]).forEach(a=>out.push('AU  - ' + a));
+    if(r.year)     out.push('PY  - ' + r.year);
+    if(r.journal)  out.push('JO  - ' + r.journal);
+    if(r.abstract) out.push('AB  - ' + r.abstract.replace(/\r?\n/g,' '));
+    if(r.doi)      out.push('DO  - ' + r.doi);
+    if(r.url)      out.push('UR  - ' + r.url);
+    // carry your label as a note so it isn't lost (ASReview keeps it as a column)
+    if(r.decision) out.push('N1  - screening_label: ' + ({inc:'relevant',exc:'irrelevant',may:'maybe'}[r.decision]||r.decision));
+    out.push('ER  - ');
+    out.push('');
+  }
+  return out.join('\r\n');
+}
+function exportRIS(which){
+  if(!DATA.length){ alert('Fetch some records first (Step 1).'); return; }
+  let rows = DATA.slice().sort((a,b)=>b.score-a.score);
+  if(which==='keep') rows = rows.filter(r=>r.decision==='inc'||r.decision==='may');
+  if(!rows.length){ alert('No included/maybe records yet — use “Download RIS for ASReview” to export everything.'); return; }
+  download('asreview_import_'+stamp()+'.ris', toRIS(rows), 'application/x-research-info-systems');
+}
+function exportCSV(which){
+  if(!DATA.length){ alert('Fetch some records first.'); return; }
+  let rows=DATA.slice().sort((a,b)=>b.score-a.score);
+  if(which==='inc') rows=rows.filter(r=>r.decision==='inc');
+  // 'asreview' = columns ASReview recognises (title, abstract, authors, doi…)
+  const header = which==='asreview'
+    ? 'title,abstract,authors,doi,publication_year,url'
+    : 'decision,score,year,title,authors,doi,source,oa_status,pdf_url,abstract';
+  const out=[header];
+  rows.forEach(r=>{
+    const authors=(r.authorList||[]).join('; ');
+    if(which==='asreview') out.push([csvEsc(r.title),csvEsc(r.abstract),csvEsc(authors),csvEsc(r.doi),csvEsc(r.year),csvEsc(r.url)].join(','));
+    else out.push([r.decision||'',r.score,r.year,csvEsc(r.title),csvEsc(authors),csvEsc(r.doi),csvEsc(r.source||'OpenAlex'),r.oa,csvEsc(r.pdf),csvEsc((r.abstract||'').slice(0,400))].join(','));
+  });
+  download((which==='inc'?'included':which==='asreview'?'asreview_import':'worksheet')+'_'+stamp()+'.csv', out.join('\n'), 'text/csv');
+}
+function downloadHub(){
+  const oa=DATA.filter(r=>r.pdf && r.decision!=='exc').sort((a,b)=>b.score-a.score);
+  if(!oa.length){ alert('No open-access PDFs to list yet.'); return; }
+  let h='<!doctype html><meta charset=utf-8><title>Download hub</title><style>body{font:15px system-ui;max-width:860px;margin:30px auto;padding:0 16px}li{margin:9px 0}a{color:#d2691e}</style>';
+  h+='<h1>🔥 Open-access PDFs ('+oa.length+')</h1><ol>';
+  oa.forEach(r=>h+='<li><a href="'+r.pdf+'" target=_blank>'+esc(r.title)+'</a> ('+(r.year||'')+')</li>');
+  h+='</ol>';
+  download('download_hub_'+stamp()+'.html', h, 'text/html');
+}
+function saveSession(){ download('ember_session_'+stamp()+'.json', JSON.stringify({inputs:dumpInputs(),data:DATA,raw:RAW,sources:SOURCES}), 'application/json'); }
+function loadSession(file){ const fr=new FileReader(); fr.onload=()=>{ try{ const o=JSON.parse(fr.result); if(o.inputs) restoreInputs(o.inputs); DATA=o.data||[]; RAW=o.raw||DATA.length; SOURCES=o.sources||[]; cursor=0; rescore(); render(); stats(); renderSources(); log('Loaded '+DATA.length+' records.'); }catch(e){ alert('Could not read that file.'); } }; fr.readAsText(file); }
+function dumpInputs(){ const o={}; ['c1','c2','yfrom','yto','lang','type','maxrec','mail','score-core','score-ctx','score-noise'].forEach(k=>o[k]=$(k).value); return o; }
+function restoreInputs(o){ for(const k in o){ if($(k)) $(k).value=o[k]; } }
+
+/* ---------- clipboard helper ---------- */
+function copyText(t, msg){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(()=>log(msg||'Copied.'), ()=>download('ember_'+stamp()+'.txt', t));
+  } else { download('ember_'+stamp()+'.txt', t); }
+}
+
+/* ---------- gold-set search validation ---------- */
+async function validateSearch(){
+  const out=$('goldout');
+  const dois=lines('goldset').map(d=>d.replace(/^https?:\/\/(dx\.)?doi\.org\//i,'').trim().toLowerCase()).filter(Boolean);
+  if(!dois.length){ out.innerHTML='<span class="note">Paste one or more DOIs above first.</span>'; return; }
+  if(!DATA.length){ out.innerHTML='<span class="note">Run a search in Step 1 first, then validate.</span>'; return; }
+  out.innerHTML='<span class="note">Checking '+dois.length+' DOIs…</span>';
+  const have=new Set(DATA.map(r=>(r.doi||'').toLowerCase()));
+  const mail=($('mail').value||'').trim(); const m=mail?('&mailto='+encodeURIComponent(mail)):'';
+  const rows=[];
+  for(const d of dois){
+    if(have.has(d)){ rows.push({d,state:'in'}); continue; }
+    let exists=false;
+    try{ const r=await fetch('https://api.openalex.org/works/doi:'+d+'?select=id'+m); exists = r.ok; }catch(e){}
+    rows.push({d, state: exists?'missed':'notfound'});
+  }
+  const ok=rows.filter(r=>r.state==='in').length;
+  const pct=Math.round(100*ok/rows.length);
+  let html='<div style="font-size:13px;margin-bottom:8px"><b style="color:'+(pct===100?'var(--ok)':pct>=70?'var(--ember-2)':'var(--no)')+'">'+ok+' of '+rows.length+'</b> known papers retrieved by your search ('+pct+'%).</div>';
+  html+=rows.map(r=>{
+    const t = r.state==='in' ? '<span style="color:var(--ok)">✅ retrieved</span>'
+            : r.state==='missed' ? '<span style="color:var(--may)">⚠️ in OpenAlex but your query missed it</span>'
+            : '<span style="color:var(--no)">❌ not found in OpenAlex</span>';
+    return '<div class="src">'+t+' · '+r.d+'</div>';
+  }).join('');
+  if(rows.some(r=>r.state==='missed')) html+='<div class="note" style="margin-top:8px">⚠️ Some known papers exist in OpenAlex but your query didn’t catch them — add their key terms/synonyms to Concept 1 or 2 and re-run to make the search more sensitive.</div>';
+  if(rows.some(r=>r.state==='notfound')) html+='<div class="note" style="margin-top:4px">❌ Papers “not found in OpenAlex” won’t be retrievable here — cover them via a Scopus/PubMed import instead.</div>';
+  out.innerHTML=html;
+}
+
+/* ---------- reproducible search record + methods paragraph ---------- */
+function searchRecord(){
+  const today=stamp();
+  const q=buildFilter().replace('title_and_abstract.search:','');
+  const fl=[]; if($('type').value)fl.push('articles only'); if($('lang').value)fl.push('English'); if($('yfrom').value&&$('yto').value)fl.push($('yfrom').value+'–'+$('yto').value);
+  const p=DATA.length?prismaNumbers():null;
+  let t='SEARCH RECORD — '+today+'\n';
+  t+='Database: OpenAlex (https://openalex.org)\n';
+  t+='Field: title & abstract\nQuery: '+q+'\n';
+  t+='Limits: '+(fl.join('; ')||'none')+'\n';
+  if(SOURCES.length) t+='Sources: '+SOURCES.map(s=>s.replace(/<[^>]*>/g,'')).join(' | ')+'\n';
+  if(p){ t+='\nRecords identified: '+p.identified+'\nDuplicates removed: '+p.dup+'\nRecords screened: '+p.screened+'\nExcluded: '+p.exc+'\nIncluded: '+p.inc+(p.may?(' (+'+p.may+' maybe)'):'')+'\n'; }
+  t+='\nMethods paragraph (edit as needed):\n';
+  t+='A systematic search of OpenAlex was conducted on '+today+', searching titles and abstracts with the query: '+q+(fl.length?(', limited to '+fl.join(', ')):'')+'. ';
+  if(p) t+='The search returned '+p.identified+' records; after removing '+p.dup+' duplicates, '+p.screened+' records were screened on title and abstract, of which '+p.inc+' met the inclusion criteria.';
+  else t+='[Run the search to fill in the record counts.]';
+  return t;
+}
+function copyRecord(){ copyText(searchRecord(), 'Search record + methods paragraph copied to clipboard.'); }
+
+/* ---------- shareable permalink (encodes the search setup in the URL) ---------- */
+function stateObj(){ return {c1:$('c1').value,c2:$('c2').value,yf:$('yfrom').value,yt:$('yto').value,lg:$('lang').value,ty:$('type').value,co:$('score-core').value,cx:$('score-ctx').value,no:$('score-noise').value}; }
+function copyLink(){
+  try{
+    const s=btoa(unescape(encodeURIComponent(JSON.stringify(stateObj()))));
+    const url=location.origin+location.pathname+'#s='+s;
+    copyText(url, 'Shareable link copied — opening it restores this exact search setup.');
+  }catch(e){ alert('Could not build link: '+e.message); }
+}
+function restoreFromHash(){
+  const m=(location.hash||'').match(/s=([^&]+)/); if(!m) return false;
+  try{ const o=JSON.parse(decodeURIComponent(escape(atob(m[1]))));
+    const map={c1:'c1',c2:'c2',yf:'yfrom',yt:'yto',lg:'lang',ty:'type',co:'score-core',cx:'score-ctx',no:'score-noise'};
+    for(const k in map){ if(o[k]!=null && $(map[k])) $(map[k]).value=o[k]; }
+    return true;
+  }catch(e){ return false; }
+}
+
+/* keep your setup between refreshes */
+['c1','c2','score-core','score-ctx','score-noise','yfrom','yto','maxrec','mail'].forEach(k=>{
+  try{ const v=localStorage.getItem('srtriage_'+k); if(v!=null)$(k).value=v; $(k).addEventListener('input',()=>{try{localStorage.setItem('srtriage_'+k,$(k).value)}catch(e){}}); }catch(e){}
+});
+// a shared link (#s=...) overrides saved settings so the recipient gets your exact search
+if(restoreFromHash()) log('Search setup loaded from shared link.');
+</script>
+</body>
+</html>
