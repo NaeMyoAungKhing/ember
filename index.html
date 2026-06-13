@@ -56,6 +56,10 @@
   textarea{min-height:72px;resize:vertical}
   textarea:focus,input:focus,select:focus{outline:none;border-color:var(--ember);box-shadow:0 0 0 3px var(--glow)}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .mode{display:flex;gap:10px;flex-wrap:wrap;margin:2px 0 14px}
+  .mode label{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--muted);font-weight:600;text-transform:none;letter-spacing:0;margin:0;font-size:13px;border:1px solid var(--line);border-radius:9px;padding:7px 12px;background:var(--panel-2)}
+  .mode label:has(input:checked){border-color:var(--ember);color:var(--ember-2)}
+  .mode input{width:auto;accent-color:var(--ember)}
   .filters{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px}
   @media(max-width:680px){.grid2,.filters{grid-template-columns:1fr}}
 
@@ -192,14 +196,28 @@
   <div class="card">
     <h2><span class="step">1</span> Build your search</h2>
     <p class="sub">Type keywords grouped by idea — one per line (that's an <b>OR</b>). The two groups are joined with <b>AND</b>. Use quotes for phrases.</p>
-    <div class="grid2">
-      <div>
-        <label>Concept 1 — the main idea</label>
-        <textarea id="c1" placeholder='one term per line — e.g.&#10;"machine learning"&#10;"deep learning"&#10;(quotes = exact phrase)'></textarea>
+    <div class="mode">
+      <label><input type="radio" name="mode" value="simple" checked onchange="setMode()"> 🟢 Simple — guided boxes</label>
+      <label><input type="radio" name="mode" value="adv" onchange="setMode()"> 🔧 Advanced — full Boolean query (Scopus / WoS style)</label>
+    </div>
+    <div id="simpleBox">
+      <div class="grid2">
+        <div>
+          <label>Concept 1 — the main idea</label>
+          <textarea id="c1" placeholder='one term per line — e.g.&#10;"machine learning"&#10;"deep learning"&#10;(quotes = exact phrase)'></textarea>
+        </div>
+        <div>
+          <label>Concept 2 — the context (optional)</label>
+          <textarea id="c2" placeholder="optional second concept — e.g.&#10;education&#10;school&#10;classroom"></textarea>
+        </div>
       </div>
-      <div>
-        <label>Concept 2 — the context (optional)</label>
-        <textarea id="c2" placeholder="optional second concept — e.g.&#10;education&#10;school&#10;classroom"></textarea>
+    </div>
+    <div id="advBox" style="display:none">
+      <label>Boolean query — write the full search yourself (AND · OR · NOT · parentheses · "phrases")</label>
+      <textarea id="advq" style="min-height:110px" placeholder='e.g.  (neuroleadership OR "brain-based leadership" OR "organizational neuroscience") AND (education OR school OR university)'></textarea>
+      <div class="btnrow" style="margin-top:8px">
+        <button class="sm" onclick="cleanScopus()">↺ Pasted from Scopus? Clean it</button>
+        <span class="note" style="margin:0;align-self:center">OpenAlex understands <b>AND · OR · NOT · ( ) · "phrases"</b>. It does <b>not</b> support Scopus field tags (TITLE-ABS-KEY), proximity (W/n) or <code>*</code> wildcards — “Clean it” strips those for you.</span>
       </div>
     </div>
     <div class="filters">
@@ -346,10 +364,16 @@ const recKey = r => (r.doi||'').toLowerCase() + '|' + (r.title||'').toLowerCase(
 const lines = el => $(el).value.split('\n').map(s=>s.trim()).filter(Boolean);
 const log = m => { $('log').textContent = m; };
 
+function isAdvanced(){ const r=document.querySelector('input[name=mode]:checked'); return r && r.value==='adv'; }
 function buildFilter(){
-  const c1 = lines('c1'), c2 = lines('c2');
-  let q = '(' + c1.join(' OR ') + ')';
-  if (c2.length) q += ' AND (' + c2.join(' OR ') + ')';
+  let q;
+  if(isAdvanced()){
+    q = ($('advq').value||'').trim();
+  } else {
+    const c1 = lines('c1'), c2 = lines('c2');
+    q = '(' + c1.join(' OR ') + ')';
+    if (c2.length) q += ' AND (' + c2.join(' OR ') + ')';
+  }
   let f = 'title_and_abstract.search:' + q;
   if ($('type').value) f += ',type:' + $('type').value;
   if ($('lang').value) f += ',language:' + $('lang').value;
@@ -400,7 +424,18 @@ async function run(){
   }
   SOURCES.push('OpenAlex: <b>'+DATA.length+'</b> unique (from '+recs.length+' fetched)');
   // auto-seed Core scoring terms from the search if the user left them empty (so scoring is never all-zero)
-  if(!lines('score-core').length){ const c1=lines('c1').map(t=>t.replace(/^"|"$/g,'').trim()).filter(Boolean); if(c1.length){ $('score-core').value=c1.join('\n'); try{localStorage.setItem('srtriage_score-core',$('score-core').value)}catch(e){} } }
+  if(!lines('score-core').length){
+    let seed;
+    if(isAdvanced()){
+      const raw=($('advq').value||'');
+      const phrases=(raw.match(/"[^"]+"/g)||[]).map(s=>s.replace(/"/g,''));
+      const words=raw.replace(/"[^"]+"/g,' ').replace(/[()]/g,' ').split(/\s+/).filter(w=>w && !/^(AND|OR|NOT)$/i.test(w));
+      seed=[...phrases,...words];
+    } else {
+      seed=lines('c1').map(t=>t.replace(/^"|"$/g,'').trim()).filter(Boolean);
+    }
+    if(seed.length){ $('score-core').value=[...new Set(seed)].join('\n'); try{localStorage.setItem('srtriage_score-core',$('score-core').value)}catch(e){} }
+  }
   rescore();
   log('Done — ' + DATA.length + ' unique (from ' + recs.length + ').');
   cursor=0; render(); stats(); renderSources();
@@ -595,6 +630,21 @@ function markFocus(){ const trs=$('rows').querySelectorAll('tr'); trs.forEach((t
 function scrollFocus(){ const tr=$('rows').querySelector('tr.focus'); if(tr) tr.scrollIntoView({block:'nearest'}); }
 function setDec(i,d){ DATA[i].decision = DATA[i].decision===d?'':d; render(); stats(); }
 function decideCursor(d){ if(!VIEW.length) return; const idx=VIEW[cursor]; if(idx==null) return; DATA[idx].decision = (DATA[idx].decision===d?'':d); cursor=Math.min(VIEW.length-1,cursor+1); render(); stats(); scrollFocus(); }
+function setMode(){
+  const adv=isAdvanced();
+  $('simpleBox').style.display=adv?'none':'';
+  $('advBox').style.display=adv?'':'none';
+}
+function cleanScopus(){
+  let q=$('advq').value;
+  q=q.replace(/\b(TITLE-ABS-KEY|TITLE_ABS_KEY|TITLE|ABS|KEY|ALL|AUTHKEY|INDEXTERMS|SRCTITLE|DOI|PUBYEAR|LANGUAGE|DOCTYPE)\s*\(/gi,'(');
+  q=q.replace(/\s+(W|PRE)\/\d+\s+/gi,' AND ');   // proximity -> AND (approx)
+  q=q.replace(/[*?]/g,'');                        // drop wildcards
+  q=q.replace(/\s+/g,' ').trim();
+  $('advq').value=q;
+  try{localStorage.setItem('srtriage_advq',q)}catch(e){}
+  log('Cleaned to OpenAlex Boolean — review it, then Fetch & rank.');
+}
 function loadExample(){
   $('c1').value='neuroleadership\n"organizational neuroscience"\n"leadership neuroscience"\n"brain-based leadership"\n"SCARF model"';
   $('c2').value='education\nschool\nuniversity\nteaching\nstudent\nlearning';
@@ -790,7 +840,7 @@ function restoreFromHash(){
 }
 
 /* keep your setup between refreshes */
-['c1','c2','score-core','score-ctx','score-noise','yfrom','yto','maxrec','mail'].forEach(k=>{
+['c1','c2','advq','score-core','score-ctx','score-noise','yfrom','yto','maxrec','mail'].forEach(k=>{
   try{ const v=localStorage.getItem('srtriage_'+k); if(v!=null)$(k).value=v; $(k).addEventListener('input',()=>{try{localStorage.setItem('srtriage_'+k,$(k).value)}catch(e){}}); }catch(e){}
 });
 // a shared link (#s=...) overrides saved settings so the recipient gets your exact search
